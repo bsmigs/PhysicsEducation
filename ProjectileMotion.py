@@ -1,6 +1,5 @@
 """
 General Numerical Solver for 2D-projectile motion.
-
 author: Brian Smigielski
 email: bsmigs@gmail.com
 website: http://rfground.wordpress.com
@@ -15,6 +14,7 @@ class ProjectileMotion:
     
     def __init__(self):
         self.fields = {'mass':1.0, 'g':9.81, 'v0':10, 'theta':45}
+        self.dragFields = {'drag coefficient':'0.5', 'diameter':'0.1', 'air density':'1.225'} # Drag coefficient = dimensionless, Diameter (m), Density (kg/m^3)
         self.origin = (0, 0)
         self.entries = []
         self.dt = 0.01
@@ -46,6 +46,7 @@ class ProjectileMotion:
         self.t = np.append(self.t, self.time_elapsed)
         self.pos = np.append(self.pos, [self.state[0], self.state[2]])
         self.v = np.append(self.v, [self.state[1], self.state[3]])
+
 
         
     def computeDerivedQuantities(self):
@@ -152,22 +153,28 @@ CheckVar6 = IntVar()
 
 
 # Begin logic to include air resistance
-row = Frame(root)
-label = Label(row, width=15, text='Drag coefficient', anchor='w')
-ent = Entry(row)
-ent.insert(END, '1.0')
+dragFields = {'Drag Coefficient':'0.5', 'Diameter':'0.1', 'Air Density':'1.225'} # Drag coefficient = dimensionless, Diameter (m), Density (kg/m^3)
+dragEntries = []
+for key in dragFields:
+    row = Frame(root)
+    label = Label(row, width=15, text=key, anchor='w')
+    ent = Entry(row)
+    ent.insert(END, dragFields[key])
 
-row.bind()
-row.pack(side=TOP, fill=X, padx=5, pady=5)
-label.pack(side=LEFT)
-ent.pack(side=LEFT, expand=YES, fill=X)
-ent.configure(state='disabled')
+    row.bind()
+    row.pack(side=TOP, fill=X, padx=5, pady=5)
+    label.pack(side=LEFT)
+    ent.pack(side=LEFT, expand=YES, fill=X)
+    ent.configure(state='disabled')
+
+    dragEntries.append((key, ent))
 
 def revealOptions():
-    if (CheckVar0.get() == 0):
-        ent.configure(state='disabled')
-    else:
-        ent.configure(state='normal')
+    for ent in dragEntries:
+        if (CheckVar0.get() == 0):
+            ent[1].configure(state='disabled')
+        else:
+            ent[1].configure(state='normal')
 
 C0 = Checkbutton(root, text="Include air resistance", justify=LEFT, variable=CheckVar0, command=revealOptions)
 C0.pack(side=TOP, anchor=W)
@@ -377,7 +384,6 @@ b2.pack(side=RIGHT, padx=5, pady=5)
 
 # run it
 root.mainloop()
-
 
 
 
