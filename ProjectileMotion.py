@@ -14,9 +14,10 @@ class ProjectileMotion:
     
     def __init__(self):
         self.fields = {'mass':1.0, 'g':9.81, 'v0':10, 'theta':45}
-        self.dragFields = {'drag coefficient':'0.5', 'diameter':'0.1', 'air density':'1.225'} # Drag coefficient = dimensionless, Diameter (m), Density (kg/m^3)
+        self.unitFields = {'mass':'(kg)', 'g':'(m/s^2)', 'v0':'(m/s)', 'theta':'(deg)'}
+        self.dragFields = {'drag coefficient':0.5, 'diameter':0.01, 'air density':1.225} # Drag coefficient = dimensionless, Diameter (m), Density (kg/m^3)
+        self.unitDragFields = {'drag coefficient':'(number)', 'diameter':'(m)', 'air density':'(kg/m^3)'}
         self.origin = (0, 0)
-        self.entries = []
         self.dt = 0.01
         self.time_elapsed = 0
         self.state = []
@@ -29,7 +30,7 @@ class ProjectileMotion:
         return (v0x, v0y)
     
 
-    def step(self):
+    def evolveNoDrag(self):
         """execute one time step of length dt and update state"""
         # x-direction
         self.state[0] += self.state[1]*self.dt
@@ -68,15 +69,18 @@ class ProjectileMotion:
         self.F = np.insert(self.F, 0, self.F[0,:], axis=0)
 
 
-    def evolve(self):
-        t = self.getTimeVec()
-        for tt in t:
-            self.step()
-        self.computeDerivedQuantities()
+    def evolve(self, usingDragForce):
+        if (usingDragForce == 0):
+            t = self.getTimeVec()
+            for tt in t:
+                self.evolveNoDrag()
+            self.computeDerivedQuantities()
+        else:
+	    print "Using drag force!"
         
 
-    def setValues(self):
-        for entry in self.entries:
+    def setValues(self, entries):
+        for entry in entries:
             field = entry[0]
             value  = entry[1].get()
             self.fields[field] = value
@@ -129,6 +133,7 @@ class ProjectileMotion:
 pm = ProjectileMotion()
 root = Tk()
 
+entries = []
 for key in pm.fields:
     row = Frame(root)
     label = Label(row, width=15, text=key, anchor='w')
@@ -138,48 +143,59 @@ for key in pm.fields:
     row.bind()
     row.pack(side=TOP, fill=X, padx=5, pady=5)
     label.pack(side=LEFT)
-    entry.pack(side=RIGHT, expand=YES, fill=X)
+    entry.pack(side=LEFT, expand=YES, fill=X)
 
-    (pm.entries).append((key, entry))
+    # set units
+    unitsLabel = Label(row, width=8, text=pm.unitFields[key], anchor='w')
+    unitsLabel.pack(side=RIGHT)
+
+    # append values to entries list
+    entries.append( (key, entry) )
+    
     
 
-CheckVar0 = IntVar()
-CheckVar1 = IntVar()
-CheckVar2 = IntVar()
-CheckVar3 = IntVar()
-CheckVar4 = IntVar()
-CheckVar5 = IntVar()
-CheckVar6 = IntVar()
-
-
 # Begin logic to include air resistance
-dragFields = {'Drag Coefficient':'0.5', 'Diameter':'0.1', 'Air Density':'1.225'} # Drag coefficient = dimensionless, Diameter (m), Density (kg/m^3)
+CheckVar0 = IntVar()
+
 dragEntries = []
-for key in dragFields:
+for key in pm.dragFields:
     row = Frame(root)
     label = Label(row, width=15, text=key, anchor='w')
     ent = Entry(row)
-    ent.insert(END, dragFields[key])
+    ent.insert(END, pm.dragFields[key])
 
     row.bind()
     row.pack(side=TOP, fill=X, padx=5, pady=5)
     label.pack(side=LEFT)
     ent.pack(side=LEFT, expand=YES, fill=X)
-    ent.configure(state='disabled')
+    ent.config(state='disabled')
+
+    # set units
+    unitsLabel = Label(row, width=8, text=pm.unitDragFields[key], anchor='w')
+    unitsLabel.pack(side=RIGHT)
 
     dragEntries.append((key, ent))
 
 def revealOptions():
     for ent in dragEntries:
         if (CheckVar0.get() == 0):
-            ent[1].configure(state='disabled')
+            ent[1].config(state='disabled')
         else:
-            ent[1].configure(state='normal')
+            ent[1].config(state='normal')
+
 
 C0 = Checkbutton(root, text="Include air resistance", justify=LEFT, variable=CheckVar0, command=revealOptions)
 C0.pack(side=TOP, anchor=W)
 # End logic to include air resistance
 
+
+
+CheckVar1 = IntVar()
+CheckVar2 = IntVar()
+CheckVar3 = IntVar()
+CheckVar4 = IntVar()
+CheckVar5 = IntVar()
+CheckVar6 = IntVar()
 
 C1 = Checkbutton(root, text="Y-position vs. X-position", variable=CheckVar1, justify=LEFT)
 C2 = Checkbutton(root, text="X-position vs. Time", variable=CheckVar2, justify=LEFT)
@@ -197,11 +213,18 @@ C6.pack(side=TOP, anchor=W)
 
 
 def runAnimation():
-    # read in user values
-    pm.setValues()
+
     # evolve the states for all time
-    pm.evolve()
+    usingDragForce = CheckVar0.get()
+    if (usingDragForce == 1):
+        # concatenate both lists together
+        entries = entries + dragEntries
+
+    # read in and set user values
+    pm.setValues(entries)
+    pm.evolve(usingDragForce)
     t_size = pm.getTimeVec().size
+
 
     if (CheckVar1.get() == 1):
         ## set up figure y-position vs. x-position animation
