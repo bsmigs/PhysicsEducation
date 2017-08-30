@@ -128,8 +128,6 @@ class ProjectileMotion:
 pm = ProjectileMotion()
 root = Tk()
 
-CheckVar0 = IntVar()
-
 for key in pm.fields:
     row = Frame(root)
     label = Label(row, width=15, text=key, anchor='w')
@@ -142,7 +140,9 @@ for key in pm.fields:
     entry.pack(side=RIGHT, expand=YES, fill=X)
 
     (pm.entries).append((key, entry))
+    
 
+CheckVar0 = IntVar()
 CheckVar1 = IntVar()
 CheckVar2 = IntVar()
 CheckVar3 = IntVar()
@@ -150,12 +150,36 @@ CheckVar4 = IntVar()
 CheckVar5 = IntVar()
 CheckVar6 = IntVar()
 
-C1 = Checkbutton(root, text = "Y-position vs. X-position", variable = CheckVar1, justify=LEFT)
-C2 = Checkbutton(root, text = "X-position vs. Time", variable = CheckVar2, justify=LEFT)
-C3 = Checkbutton(root, text = "Y-position vs. Time", variable = CheckVar3, justify=LEFT)
-C4 = Checkbutton(root, text = "Force vs. Time", variable = CheckVar4, justify=LEFT)
-C5 = Checkbutton(root, text = "Momentum vs. Time", variable = CheckVar5, justify=LEFT)
-C6 = Checkbutton(root, text = "Energy vs. Time", variable = CheckVar6, justify=LEFT)
+
+# Begin logic to include air resistance
+row = Frame(root)
+label = Label(row, width=15, text='Drag coefficient', anchor='w')
+ent = Entry(row)
+ent.insert(END, '1.0')
+
+row.bind()
+row.pack(side=TOP, fill=X, padx=5, pady=5)
+label.pack(side=LEFT)
+ent.pack(side=LEFT, expand=YES, fill=X)
+ent.configure(state='disabled')
+
+def revealOptions():
+    if (CheckVar0.get() == 0):
+        ent.configure(state='disabled')
+    else:
+        ent.configure(state='normal')
+
+C0 = Checkbutton(root, text="Include air resistance", justify=LEFT, variable=CheckVar0, command=revealOptions)
+C0.pack(side=TOP, anchor=W)
+# End logic to include air resistance
+
+
+C1 = Checkbutton(root, text="Y-position vs. X-position", variable=CheckVar1, justify=LEFT)
+C2 = Checkbutton(root, text="X-position vs. Time", variable=CheckVar2, justify=LEFT)
+C3 = Checkbutton(root, text="Y-position vs. Time", variable=CheckVar3, justify=LEFT)
+C4 = Checkbutton(root, text="Force vs. Time", variable=CheckVar4, justify=LEFT)
+C5 = Checkbutton(root, text="Momentum vs. Time", variable=CheckVar5, justify=LEFT)
+C6 = Checkbutton(root, text="Energy vs. Time", variable=CheckVar6, justify=LEFT)
 
 C1.pack(side=TOP, anchor=W)
 C2.pack(side=TOP, anchor=W)
