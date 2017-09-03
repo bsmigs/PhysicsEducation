@@ -1,5 +1,6 @@
 """
 General Numerical Solver for 2D-projectile motion.
+
 author: Brian Smigielski
 email: bsmigs@gmail.com
 website: http://rfground.wordpress.com
@@ -8,6 +9,8 @@ website: http://rfground.wordpress.com
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import scipy.integrate as integrate
+from scipy import interpolate
 from Tkinter import *
 
 class ProjectileMotion:
@@ -15,12 +18,46 @@ class ProjectileMotion:
     def __init__(self):
         self.fields = {'mass':1.0, 'g':9.81, 'v0':10, 'theta':45}
         self.unitFields = {'mass':'(kg)', 'g':'(m/s^2)', 'v0':'(m/s)', 'theta':'(deg)'}
-        self.dragFields = {'drag coefficient':0.5, 'diameter':0.01, 'air density':1.225} # Drag coefficient = dimensionless, Diameter (m), Density (kg/m^3)
+        self.dragFields = {'drag coefficient':0.5, 'diameter':0.01, 'air density':1.225} 
         self.unitDragFields = {'drag coefficient':'(number)', 'diameter':'(m)', 'air density':'(kg/m^3)'}
         self.origin = (0, 0)
         self.dt = 0.01
         self.time_elapsed = 0
         self.state = []
+
+
+    def setValues(self, entries):
+        for entry in entries:
+            field = entry[0]
+            value  = entry[1].get()
+            self.fields[field] = value
+
+            try:
+                self.fields[field] = float(self.fields[field])
+            except ValueError:
+                print "Error: You must enter a number for field: ",field.upper()
+                abort()
+
+            # make sure all fields > 0. We'll take care of
+            # "g" below
+            self.fields[field] = np.abs(self.fields[field])
+
+        # make sure "g" is < 0
+        self.fields['g'] = -np.abs(self.fields['g'])
+
+        # make sure theta between 0 and 180
+        if ((self.fields['theta'] < 0.) | (self.fields['theta'] > 180.)):
+            print('Theta must be between 0 and 180 deg')
+            abort()
+                
+        # define initial state
+        vels = self.getInitialVelocities()
+        self.state = [self.origin[0], vels[0], self.origin[1], vels[1]]
+
+        # set initial conditions
+        self.t = np.array([0])
+        self.pos = np.array([self.origin[0], self.origin[1]])
+        self.v = np.array([vels[0], vels[1]])
 
         
     def getInitialVelocities(self):
@@ -30,7 +67,7 @@ class ProjectileMotion:
         return (v0x, v0y)
     
 
-    def evolveNoDrag(self):
+    def statesNoDrag(self):
         """execute one time step of length dt and update state"""
         # x-direction
         self.state[0] += self.state[1]*self.dt
@@ -48,13 +85,24 @@ class ProjectileMotion:
         self.pos = np.append(self.pos, [self.state[0], self.state[2]])
         self.v = np.append(self.v, [self.state[1], self.state[3]])
 
+        
+    def derivs(self, dummyState, dummyT):
+        area = 0.25 * np.pi * self.fields['diameter']
+        dragCoeff = 0.5 * self.fields['drag coefficient'] * self.fields['air density'] * area
 
+        # model the quadratic drag force \alpha |v|^2 \hat{v} as \alpha |v| \vec{v}
+        # set \beta = \alpha |v|
+        dxdt = dummyState[1]
+        dydt = dummyState[3]
+        
+        beta = dragCoeff * np.sqrt(dummyState[1]*dummyState[1] + dummyState[3]*dummyState[3])
+        dvxdt = -beta * dummyState[1]
+        dvydt = self.fields['g'] - beta * dummyState[3]
+
+        return np.array([dxdt, dvxdt, dydt, dvydt])
+        
         
     def computeDerivedQuantities(self):
-        # reshape so that its in rows of x and y components
-        self.pos = self.pos.reshape(len(self.pos)/2, 2)
-        self.v = self.v.reshape(len(self.v)/2, 2)
-        
         # compute momentum
         self.p = self.fields['mass'] * self.v
 
@@ -70,55 +118,92 @@ class ProjectileMotion:
 
 
     def evolve(self, usingDragForce):
+        t = self.getTimeVec()
+
+        """
         if (usingDragForce == 0):
-            t = self.getTimeVec()
             for tt in t:
-                self.evolveNoDrag()
-            self.computeDerivedQuantities()
-        else:
-	    print "Using drag force!"
-        
-
-    def setValues(self, entries):
-        for entry in entries:
-            field = entry[0]
-            value  = entry[1].get()
-            self.fields[field] = value
-
-            try:
-                self.fields[field] = float(self.fields[field])
-                if (field == "g"):
-                    # make sure "g" is < 0
-                    self.fields[field] = -np.abs(self.fields[field])
+                self.statesNoDrag()
                 
-            except ValueError:
-                print "Error: You must enter a number for field: ",field.upper()
-                abort()
+            # reshape so that its in rows of x and y components
+            self.pos = self.pos.reshape(len(self.pos)/2, 2)
+            self.v = self.v.reshape(len(self.v)/2, 2)
+        else:
+            # integrate to get solutions
+            states = integrate.odeint(self.derivs, self.state, t)
+            states = np.array(states)
+            
+            # break out positions/vels from the state vector
+            self.pos = states[:,[0,2]]
+            self.v = states[:,[1,3]]
+            self.t = t
+        """
 
-        # define initial state
-        vels = self.getInitialVelocities()
-        self.state = [self.origin[0], vels[0], self.origin[1], vels[1]]
+        if (usingDragForce == 0):
+            self.fields['diameter'] = 0
 
-        # set initial conditions
-        self.t = np.array([0])
-        self.pos = np.array([self.origin[0], self.origin[1]])
-        self.v = np.array([vels[0], vels[1]])
+        # integrate to get solutions
+        states = integrate.odeint(self.derivs, self.state, t)
+        states = np.array(states)
+            
+        # break out positions/vels from the state vector
+        self.pos = states[:,[0,2]]
+        self.v = states[:,[1,3]]
+        self.t = t
+
+        maxRange, maxTime = self.maxRange()
+        maxHeight = self.maxHeight()
+
+        self.t = np.arange(0,maxTime,self.dt)
+        self.pos = self.pos[0:len(self.t),:]
+        self.v = self.v[0:len(self.t),:]
+
+        # compute derived quantities
+        self.computeDerivedQuantities()
+
+        return maxTime, maxRange, maxHeight
+
         
 
     def maxHeight(self):
         """Get max height of projectile"""
-        vels = self.getInitialVelocities()
-        return 0.5*(vels[1]*vels[1])/np.abs(self.fields['g'])
+        timeInterp = interpolate.interp1d(self.v[:,1], self.t)
+        yposInterp = interpolate.interp1d(self.t, self.pos[:,1])
+
+        peakTime = timeInterp(0.0)
+        maxHeight = yposInterp(peakTime)
+
+        return maxHeight
+        
+        #vels = self.getInitialVelocities()
+        #return 0.5*(vels[1]*vels[1])/np.abs(self.fields['g'])
 
     
     def maxRange(self):
-        """Get max range of projectile"""
-        vels = self.getInitialVelocities()
-        return (2.0*vels[0]*vels[1])/np.abs(self.fields['g'])
+        """Get max range of projectile"""        
+        timeInterp = interpolate.interp1d(self.pos[1:len(self.pos),1], self.t[1:len(self.pos)])
+        xposInterp = interpolate.interp1d(self.t, self.pos[:,0])
+
+        maxTime = timeInterp(0.0)
+        maxRange = xposInterp(maxTime)
+
+        return maxRange, maxTime
+        
+        #vels = self.getInitialVelocities()
+        #return (2.0*vels[0]*vels[1])/np.abs(self.fields['g'])
 
 
     def getTimeVec(self):
-        timeVec = np.arange(0,self.totalTime(),self.dt)
+        # make sure that we round up to the nearest
+        # tenth of a second so that we ensure the particle
+        # reaches the ground again -- which makes
+        # the interpolations well defined
+        totalTime = self.totalTime()
+        totalTime *= 10
+        totalTime = np.ceil(totalTime)
+        totalTime /= 10
+        
+        timeVec = np.arange(0,np.ceil(totalTime),self.dt)
         return timeVec
       
     
@@ -126,12 +211,20 @@ class ProjectileMotion:
         vels = self.getInitialVelocities()
         return (2.0*vels[1])/np.abs(self.fields['g'])
 
+
+    def clear(self):
+        self.__init__()
+
 ##########################################################
 """ RUN SIM """
 ##########################################################
 
 pm = ProjectileMotion()
 root = Tk()
+
+row = Frame(root)
+label = Label(row, width=15, text='POOP', anchor='w')
+label.pack(side=TOP)
 
 entries = []
 for key in pm.fields:
@@ -153,9 +246,17 @@ for key in pm.fields:
     entries.append( (key, entry) )
     
     
-
 # Begin logic to include air resistance
+def revealOptions(dragEntries):
+    for ent in dragEntries:
+        if (CheckVar0.get() == 0):
+            ent[1].config(state='disabled')
+        else:
+            ent[1].config(state='normal')
+            
 CheckVar0 = IntVar()
+C0 = Checkbutton(root, text="Include air resistance", justify=LEFT, variable=CheckVar0, command=lambda: revealOptions(dragEntries))
+C0.pack(side=TOP, anchor=W)
 
 dragEntries = []
 for key in pm.dragFields:
@@ -175,19 +276,7 @@ for key in pm.dragFields:
     unitsLabel.pack(side=RIGHT)
 
     dragEntries.append((key, ent))
-
-def revealOptions():
-    for ent in dragEntries:
-        if (CheckVar0.get() == 0):
-            ent[1].config(state='disabled')
-        else:
-            ent[1].config(state='normal')
-
-
-C0 = Checkbutton(root, text="Include air resistance", justify=LEFT, variable=CheckVar0, command=revealOptions)
-C0.pack(side=TOP, anchor=W)
 # End logic to include air resistance
-
 
 
 CheckVar1 = IntVar()
@@ -214,23 +303,25 @@ C6.pack(side=TOP, anchor=W)
 
 def runAnimation():
 
-    # evolve the states for all time
-    usingDragForce = CheckVar0.get()
-    if (usingDragForce == 1):
-        # concatenate both lists together
-        entries = entries + dragEntries
-
+    # append drag force fields to normal ones
+    # no matter what
+    allEntries = entries + dragEntries
+        
     # read in and set user values
-    pm.setValues(entries)
-    pm.evolve(usingDragForce)
-    t_size = pm.getTimeVec().size
+    pm.setValues(allEntries)
 
+    # ask if we are using drag force
+    usingDragForce = CheckVar0.get()
+    maxTime, maxRange, maxHeight = pm.evolve(usingDragForce)
+    
+    t_size = pm.t.size
+    timeIdxs = np.arange(t_size)
 
     if (CheckVar1.get() == 1):
         ## set up figure y-position vs. x-position animation
         fig = plt.figure()
         ax = fig.add_subplot(111, autoscale_on=False, \
-                            xlim=(0, pm.maxRange()+2), ylim=(0, pm.maxHeight()+2))
+                            xlim=(0, maxRange+2), ylim=(0, maxHeight+2))
         ax.grid()
         line, = ax.plot(pm.origin[0], pm.origin[1], '-')
         time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
@@ -245,7 +336,7 @@ def runAnimation():
             time_text.set_text('time = %.3f (s)' % pm.t[i])
             return line, time_text
     
-        ani = animation.FuncAnimation(fig, y_vs_x, frames=np.arange(t_size),
+        ani = animation.FuncAnimation(fig, y_vs_x, frames=timeIdxs,
                                     interval=3000*pm.dt, blit=True, repeat=False)
 
 
@@ -253,7 +344,7 @@ def runAnimation():
     if (CheckVar2.get() == 1):
         fig2 = plt.figure()
         ax2 = fig2.add_subplot(111, autoscale_on=False, \
-                            xlim=(0, pm.totalTime()+0.5), ylim=(0, pm.maxRange()+2))
+                            xlim=(0, maxTime+0.5), ylim=(0, maxRange+2))
         ax2.grid()
         time_text2 = ax2.text(0.02, 0.95, '', transform=ax2.transAxes)
         line2, = ax2.plot([], [], '-')
@@ -268,7 +359,7 @@ def runAnimation():
             time_text2.set_text('time = %.3f (s)' % pm.t[i])
             return line2, time_text2
 
-        ani2 = animation.FuncAnimation(fig2, x_vs_t, frames=np.arange(t_size),
+        ani2 = animation.FuncAnimation(fig2, x_vs_t, frames=timeIdxs,
                                     interval=3000*pm.dt, blit=True, repeat=False)
 
 
@@ -276,7 +367,7 @@ def runAnimation():
     if (CheckVar3.get() == 1):
         fig3 = plt.figure()
         ax3 = fig3.add_subplot(111, autoscale_on=False, \
-                            xlim=(0, pm.totalTime()+0.5), ylim=(0, pm.maxHeight()+2))
+                            xlim=(0, maxTime+0.5), ylim=(0, maxHeight+2))
         ax3.grid()
         time_text3 = ax3.text(0.02, 0.95, '', transform=ax3.transAxes)
         line3, = ax3.plot([], [], '-')
@@ -291,7 +382,7 @@ def runAnimation():
             time_text3.set_text('time = %.3f (s)' % pm.t[i])
             return line3, time_text3
 
-        ani3 = animation.FuncAnimation(fig3, y_vs_t, frames=np.arange(t_size),
+        ani3 = animation.FuncAnimation(fig3, y_vs_t, frames=timeIdxs,
                                         interval=3000*pm.dt, blit=True, repeat=False)
 
 
@@ -299,7 +390,7 @@ def runAnimation():
     if (CheckVar4.get() == 1):
         fig4 = plt.figure()
         ax4 = fig4.add_subplot(111, autoscale_on=False, \
-                            xlim=(0, pm.totalTime()+0.5), ylim=(min(pm.F[:,1])-2, max(pm.F[:,0])+2))
+                            xlim=(0, maxTime+0.5), ylim=(min(pm.F[:,1])-2, max(pm.F[:,0])+2))
         ax4.grid()
         time_text4 = ax4.text(0.02, 0.95, '', transform=ax4.transAxes)
         line4a, = ax4.plot([], [], '-')
@@ -318,7 +409,7 @@ def runAnimation():
             time_text4.set_text('time = %.3f (s)' % pm.t[i])
             return line4a, line4b, time_text4
 
-        ani4 = animation.FuncAnimation(fig4, F_vs_t, frames=np.arange(t_size),
+        ani4 = animation.FuncAnimation(fig4, F_vs_t, frames=timeIdxs,
                                         interval=3000*pm.dt, blit=True, repeat=False)
 
 
@@ -327,7 +418,7 @@ def runAnimation():
     if (CheckVar5.get() == 1):
         fig5 = plt.figure()
         ax5 = fig5.add_subplot(111, autoscale_on=False, \
-                            xlim=(0, pm.totalTime()+0.5), ylim=(min(pm.p[:,1])-2, max(pm.p[:,1])+2))
+                            xlim=(0, maxTime+0.5), ylim=(min(pm.p[:,1])-2, max(pm.p[:,1])+2))
         ax5.grid()
         time_text5 = ax5.text(0.02, 0.95, '', transform=ax5.transAxes)
         line5a, = ax5.plot([], [], '-')
@@ -346,7 +437,7 @@ def runAnimation():
             time_text5.set_text('time = %.3f (s)' % pm.t[i])
             return line5a, line5b, time_text5
 
-        ani5 = animation.FuncAnimation(fig5, p_vs_t, frames=np.arange(t_size),
+        ani5 = animation.FuncAnimation(fig5, p_vs_t, frames=timeIdxs,
                                         interval=3000*pm.dt, blit=True, repeat=False)
 
 
@@ -357,7 +448,7 @@ def runAnimation():
         
         fig6 = plt.figure()
         ax6 = fig6.add_subplot(111, autoscale_on=False, \
-                            xlim=(0, pm.totalTime()+0.5), ylim=(min(pm.U)-2, max(E)+2))
+                            xlim=(0, maxTime+0.5), ylim=(min(pm.U)-2, max(E)+2))
         ax6.grid()
         time_text6 = ax6.text(0.02, 0.95, '', transform=ax6.transAxes)
         line6a, = ax6.plot([], [], '-')
@@ -380,21 +471,20 @@ def runAnimation():
             time_text6.set_text('time = %.3f (s)' % pm.t[i])
             return line6a, line6b, line6c, time_text6
 
-        ani6 = animation.FuncAnimation(fig6, E_vs_t, frames=np.arange(t_size),
+        ani6 = animation.FuncAnimation(fig6, E_vs_t, frames=timeIdxs,
                                         interval=3000*pm.dt, blit=True, repeat=False)
 
 
 
-    print("Maximum Time = %.3f (s)" % pm.totalTime())
-    print("Maximum Range = %.3f (m)" % pm.maxRange())
-    print("Maximum Height = %.3f (m)" % pm.maxHeight())
+    print("Maximum Time = %.3f (s)" % maxTime)
+    print("Maximum Range = %.3f (m)" % maxRange)
+    print("Maximum Height = %.3f (m)" % maxHeight)
         
-    # show all relevant plots and then
-    # quit when finished
-    # TODO: Allow root to "reset" so sim
-    # can be run again
+    # show all relevant plots and then quit when finished
+    # TODO: Clear out pm object so sim can run again
     plt.show()
-    root.quit()
+    #root.quit()
+    pm.clear()
 
 
 # set up buttons to run
@@ -407,6 +497,3 @@ b2.pack(side=RIGHT, padx=5, pady=5)
 
 # run it
 root.mainloop()
-
-
-
