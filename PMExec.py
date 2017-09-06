@@ -4,6 +4,7 @@ import matplotlib.animation as animation
 import Tkinter as tk
 import ProjectileMotion as pm
 from WindowConstruction import *
+from PMPlots import *
 
 root = tk.Tk()
 root.title('Particle 1 Parameter Window')
@@ -76,73 +77,30 @@ def runAnimation(checkVarList):
     intervalTime = 3000*pm.dt
 
     
+    
     ## set up figure y-position vs. x-position animation
     if (checkVarList[0].get() == 1):
-        fig = plt.figure()
-        ax = fig.add_subplot(111, autoscale_on=False, \
-                            xlim=(0, maxRange+2), ylim=(0, maxHeight+2))
-        ax.grid()
-        line, = ax.plot([], [], '-')
-        time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
-        plt.xlabel("Horizontal position (m)")
-        plt.ylabel("Vertical position (m)")
-        plt.title("Vertical Position vs. Horizontal Position")
-
-        def y_vs_x(i):
-            x = pm.pos[0:i+1, 0]
-            y = pm.pos[0:i+1, 1]
-            line.set_data(x, y)
-            time_text.set_text('time = %.3f (s)' % pm.t[i])
-            return line, time_text
-    
-        ani = animation.FuncAnimation(fig, y_vs_x, frames=timeIdxs, \
+        fig, ax = plt.subplots()
+        my_plots = PMPlots(ax, pm)
+        my_plots.set_plot_type('y_vs_x')
+        ani1 = animation.FuncAnimation(fig, my_plots.set_data, frames=timeIdxs, \
                                     interval=intervalTime, blit=True, repeat=False)
-
 
     ## set up figure x-position vs. time animation
-    if (checkVarList[1].get()== 1):
-        fig2 = plt.figure()
-        ax2 = fig2.add_subplot(111, autoscale_on=False, \
-                            xlim=(0, maxTime+0.5), ylim=(0, maxRange+2))
-        ax2.grid()
-        time_text2 = ax2.text(0.02, 0.95, '', transform=ax2.transAxes)
-        line2, = ax2.plot([], [], '-')
-        plt.xlabel("Time (s)")
-        plt.ylabel("Horizontal position (m)")
-        plt.title("Horizontal Position vs. Time")
-
-        def x_vs_t(i):
-            t = pm.t[0:i+1]
-            x = pm.pos[0:i+1, 0]
-            line2.set_data(t, x)
-            time_text2.set_text('time = %.3f (s)' % pm.t[i])
-            return line2, time_text2
-
-        ani2 = animation.FuncAnimation(fig2, x_vs_t, frames=timeIdxs, \
+    if (checkVarList[1].get() == 1):
+        fig, ax = plt.subplots()
+        my_plots = PMPlots(ax, pm)
+        my_plots.set_plot_type('y_vs_t')
+        ani2 = animation.FuncAnimation(fig, my_plots.set_data, frames=timeIdxs, \
                                     interval=intervalTime, blit=True, repeat=False)
-
 
     ## set up figure y-position vs. time animation
     if (checkVarList[2].get() == 1):
-        fig3 = plt.figure()
-        ax3 = fig3.add_subplot(111, autoscale_on=False, \
-                            xlim=(0, maxTime+0.5), ylim=(0, maxHeight+2))
-        ax3.grid()
-        time_text3 = ax3.text(0.02, 0.95, '', transform=ax3.transAxes)
-        line3, = ax3.plot([], [], '-')
-        plt.xlabel("Time (s)")
-        plt.ylabel("Vertical position (m)")
-        plt.title("Vertical Position vs. Time")
-
-        def y_vs_t(i):
-            t = pm.t[0:i+1]
-            y = pm.pos[0:i+1, 1]
-            line3.set_data(t, y)
-            time_text3.set_text('time = %.3f (s)' % pm.t[i])
-            return line3, time_text3
-
-        ani3 = animation.FuncAnimation(fig3, y_vs_t, frames=timeIdxs, \
-                                        interval=intervalTime, blit=True, repeat=False)
+        fig, ax = plt.subplots()
+        my_plots = PMPlots(ax, pm)
+        my_plots.set_plot_type('y_vs_t')
+        ani3 = animation.FuncAnimation(fig, my_plots.set_data, frames=timeIdxs, \
+                                    interval=intervalTime, blit=True, repeat=False)
 
 
     ## set up figure force vs. time animation

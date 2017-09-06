@@ -197,5 +197,3 @@ class ProjectileMotion:
 
     def clear(self):
         self.__init__()
-
-        
