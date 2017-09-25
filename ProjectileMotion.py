@@ -173,9 +173,6 @@ class ProjectileMotion:
         maxTime = timeInterp(0.0)
         maxRange = xposInterp(maxTime)
 
-	print "maxTime = ",maxTime
-	print "maxRange = ",maxRange
-
         return maxRange, maxTime
 
 

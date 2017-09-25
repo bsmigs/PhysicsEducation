@@ -41,8 +41,6 @@ class PMPlots:
             min_x = np.min(x)
             min_y = np.min(y)
 
-            print min_x,min_y
-
             max_x = np.max(x)
             max_y = np.max(y)
 
