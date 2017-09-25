@@ -35,7 +35,7 @@ class ProjectileMotion:
                         # make sure "g" < 0
                         self.basicParams[field] = -np.abs(float(value))
                     elif (field == 'x0' or field == 'y0'):
-                        # Let "x0" or "y0" be >= or =< 0
+                        # Let "x0" or "y0" be whatever sign
                         self.basicParams[field] = float(value)
                     else:
                         # Make sure other params are >= 0
@@ -138,8 +138,16 @@ class ProjectileMotion:
 
     def maxHeight(self):
         """Get max height of projectile"""
-        timeInterp = interpolate.interp1d(self.v[:,1], self.t)
-        yposInterp = interpolate.interp1d(self.t, self.pos[:,1])
+
+	"""Want to ensure particle goes through its apex  
+	before interpolating"""
+	maxIdx = np.argmax(self.pos[:,1])
+	times = self.t[maxIdx:]
+	ypos = self.pos[maxIdx:,1]
+	yvel = self.v[maxIdx:,1]
+
+	timeInterp = interpolate.interp1d(yvel, times)
+        yposInterp = interpolate.interp1d(times, ypos)
 
         peakTime = timeInterp(0.0)
         maxHeight = yposInterp(peakTime)
@@ -149,11 +157,24 @@ class ProjectileMotion:
     
     def maxRange(self):
         """Get max range of projectile"""
-        timeInterp = interpolate.interp1d(self.pos[1:len(self.pos),1], self.t[1:len(self.pos)])
-        xposInterp = interpolate.interp1d(self.t, self.pos[:,0])
+
+
+	"""Want to ensure particle goes through its apex  
+	before interpolating"""
+	maxIdx = np.argmax(self.pos[:,1])
+	times = self.t[maxIdx:]
+	xpos = self.pos[maxIdx:,0]
+	ypos = self.pos[maxIdx:,1]
+	yvel = self.v[maxIdx:,1]
+
+        timeInterp = interpolate.interp1d(ypos, times)
+	xposInterp = interpolate.interp1d(times, xpos)
 
         maxTime = timeInterp(0.0)
         maxRange = xposInterp(maxTime)
+
+	print "maxTime = ",maxTime
+	print "maxRange = ",maxRange
 
         return maxRange, maxTime
 
@@ -161,8 +182,8 @@ class ProjectileMotion:
     def getTimeVec(self):
         # make sure that we round up to the nearest
         # tenth of a second so that we ensure the particle
-        # reaches the ground again -- which makes
-        # the interpolations well defined
+        # reaches the ground again, which makes the
+        # interpolations well defined
         totalTime = self.totalTime()
         totalTime *= 10
         totalTime = np.ceil(totalTime)
@@ -172,9 +193,18 @@ class ProjectileMotion:
       
     
     def totalTime(self):
+	# compute the ideal case with no air resistance
+	# since this will serve as upper bound
         vels = self.getInitialVelocities()
-        return (2.0*vels[1]) / np.abs(self.basicParams['g'])
+	v0y = vels[1]
+	y0 = self.basicParams['y0']
+	g = np.abs(self.basicParams['g'])
+	totalTime = (v0y / g) * ( 1.0 + np.sqrt( 1.0 + y0*g / (v0y*v0y) ) )
+        return totalTime
 
 
     def clear(self):
         self.__init__()
+
+
+
