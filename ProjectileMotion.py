@@ -1,6 +1,5 @@
 """
 General Numerical Solver for 2D-projectile motion.
-
 author: Brian Smigielski
 email: bsmigs@gmail.com
 website: http://rfground.wordpress.com
@@ -14,12 +13,10 @@ from collections import OrderedDict
 class ProjectileMotion:
     
     def __init__(self):
-        #self.basicParams = {'mass':1.0, 'g':9.81, 'v0':10, 'theta':45, 'x0':0, 'y0':0}
         self.basicParams = OrderedDict([('mass',1.0), ('g',9.81), ('v0',10), ('theta',45), ('x0',0), ('y0',0)])
         self.basicParamsUnits = {'mass':'(kg)', 'g':'(m/s^2)', 'v0':'(m/s)', 'theta':'(deg)', 'x0':'(m)', 'y0':'(m)'}
         self.dragParams = {'drag coefficient':0.5, 'diameter':0.01, 'air density':1.225} 
         self.dragParamsUnits = {'drag coefficient':'(number)', 'diameter':'(m)', 'air density':'(kg/m^3)'}
-        #self.origin = (0, 0)
         self.dt = 0.01
         self.time_elapsed = 0
         self.state = []
@@ -123,7 +120,12 @@ class ProjectileMotion:
         self.t = t
 
         maxRange, maxTime = self.maxRange()
+
+        print maxRange,maxTime
+        
         maxHeight = self.maxHeight()
+
+        print maxHeight
 
         self.t = np.arange(0,maxTime,self.dt)
         self.pos = self.pos[0:len(self.t),:]
@@ -139,17 +141,24 @@ class ProjectileMotion:
     def maxHeight(self):
         """Get max height of projectile"""
 
-	"""Want to ensure particle goes through its apex  
-	before interpolating"""
-	maxIdx = np.argmax(self.pos[:,1])
-	times = self.t[maxIdx:]
-	ypos = self.pos[maxIdx:,1]
-	yvel = self.v[maxIdx:,1]
+        """Want to ensure particle goes through its apex  
+        before interpolating"""
+        maxIdx = np.argmax(self.pos[:,1])
+        if (maxIdx == 0):
+            times = self.t[0:]
+            ypos = self.pos[0:,1]
+            yvel = self.v[0:,1]
+        elif (maxIdx > 0):
+            # just to ensure we encapsulate the peak point as well
+            times = self.t[maxIdx-1:]
+            ypos = self.pos[maxIdx-1:,1]
+            yvel = self.v[maxIdx-1:,1]
 
-	timeInterp = interpolate.interp1d(yvel, times)
+        timeInterp = interpolate.interp1d(yvel, times)
         yposInterp = interpolate.interp1d(times, ypos)
 
-        peakTime = timeInterp(0.0)
+        min_yvel = 0.0
+        peakTime = timeInterp(min_yvel)
         maxHeight = yposInterp(peakTime)
 
         return maxHeight
@@ -158,18 +167,25 @@ class ProjectileMotion:
     def maxRange(self):
         """Get max range of projectile"""
 
-
-	"""Want to ensure particle goes through its apex  
-	before interpolating"""
-	maxIdx = np.argmax(self.pos[:,1])
-	times = self.t[maxIdx:]
-	xpos = self.pos[maxIdx:,0]
-	ypos = self.pos[maxIdx:,1]
-	yvel = self.v[maxIdx:,1]
+        """Want to ensure particle goes through its apex  
+        before interpolating"""
+        maxIdx = np.argmax(self.pos[:,1])
+        if (maxIdx == 0):
+            times = self.t[0:]
+            xpos = self.pos[0:,0]
+            ypos = self.pos[0:,1]
+            yvel = self.v[0:,1]
+        elif (maxIdx > 0):
+            # just to ensure we encapsulate the peak point as well
+            times = self.t[maxIdx-1:]
+            xpos = self.pos[maxIdx-1:,0]
+            ypos = self.pos[maxIdx-1:,1]
+            yvel = self.v[maxIdx-1:,1]
 
         timeInterp = interpolate.interp1d(ypos, times)
-	xposInterp = interpolate.interp1d(times, xpos)
+        xposInterp = interpolate.interp1d(times, xpos)
 
+        
         maxTime = timeInterp(0.0)
         maxRange = xposInterp(maxTime)
 
@@ -202,6 +218,3 @@ class ProjectileMotion:
 
     def clear(self):
         self.__init__()
-
-
-
