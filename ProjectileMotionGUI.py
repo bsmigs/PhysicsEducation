@@ -19,6 +19,10 @@ class ProjectileMotionGUI:
         master.title("Projectile Motion Dynamics") # set title for main window
 
         ### BASIC PARAMETER FRAME ###
+	label = tk.Label(text="Basic Parameters", width=15, anchor='w')
+        label.pack(side=tk.TOP)
+        label.config(font=("Arial", 18))
+
         # projectile motion object
         self.pm = pm.ProjectileMotion()
 
@@ -26,6 +30,10 @@ class ProjectileMotionGUI:
         self.basicParamEntries = self.loadFields(self.pm.basicParams, self.pm.basicParamsUnits)
 
         ### AIR RESISTANCE FRAME ###
+	label = tk.Label(text="Drag Parameters", width=15, anchor='w')
+        label.pack(side=tk.TOP)
+        label.config(font=("Arial", 18))
+
         # Button to include air resistance (or not)
         self.var = tk.IntVar()
         cb = tk.Checkbutton(text="Include air resistance", justify=tk.LEFT, variable=self.var, command=self.revealOptions)
@@ -124,7 +132,7 @@ class ProjectileMotionGUI:
                 my_plots = PMPlots(self.pm, self.PLOT_NAME_SHORTCUTS[kk])
                 ani_list.append(my_plots.runSimulation())
 
-        # show all relevant plots and then quit when finished
+        # show all relevant plots and then clear params when finished
         plt.show()
         self.pm.clear()
 
