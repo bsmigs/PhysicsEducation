@@ -19,7 +19,7 @@ class ProjectileMotionGUI:
         master.title("Projectile Motion Dynamics") # set title for main window
 
         ### BASIC PARAMETER FRAME ###
-	label = tk.Label(text="Basic Parameters", width=15, anchor='w')
+        label = tk.Label(text="Basic Parameters", fg="blue", width=15, anchor='w')
         label.pack(side=tk.TOP)
         label.config(font=("Arial", 18))
 
@@ -30,7 +30,7 @@ class ProjectileMotionGUI:
         self.basicParamEntries = self.loadFields(self.pm.basicParams, self.pm.basicParamsUnits)
 
         ### AIR RESISTANCE FRAME ###
-	label = tk.Label(text="Drag Parameters", width=15, anchor='w')
+        label = tk.Label(text="Drag Parameters", fg="blue", width=15, anchor='w')
         label.pack(side=tk.TOP)
         label.config(font=("Arial", 18))
 
@@ -42,7 +42,7 @@ class ProjectileMotionGUI:
         # Populate drag/air-resistance fields with a "disabled" default
         self.dragParamEntries = self.loadFields(self.pm.dragParams, self.pm.dragParamsUnits, 'disabled')
 
-        label = tk.Label(text="Generate Plots", width=15, anchor='w')
+        label = tk.Label(text="Generate Plots", fg="blue", width=15, anchor='w')
         label.pack(side=tk.TOP)
         label.config(font=("Arial", 18))
         
